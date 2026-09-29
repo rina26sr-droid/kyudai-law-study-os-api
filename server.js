@@ -240,6 +240,19 @@ app.get('/health', (req,res) => {
   res.json({ ok:true, service:'Kyudai Law Study OS API', time:new Date().toISOString() });
 });
 
+app.get('/status', (req,res) => {
+  res.json({
+    ok:true,
+    config:{
+      spreadsheetIdConfigured:Boolean(SPREADSHEET_ID),
+      serviceAccountConfigured:Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+      apiKeyConfigured:Boolean(API_KEY),
+      writeEnabled:WRITE_ENABLED,
+      logEnabled:LOG_ENABLED
+    }
+  });
+});
+
 app.get('/ready', async (req,res) => {
   try {
     const s = sheetsClient();
@@ -289,4 +302,23 @@ app.use((err,req,res,next) => {
   res.status(400).json({ ok:false, requestId:req.requestId, error:err.message });
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Kyudai Law Study OS API listening on ${PORT}`));
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`Kyudai Law Study OS API listening on ${PORT}`);
+  console.log('Config status', {
+    spreadsheetIdConfigured:Boolean(SPREADSHEET_ID),
+    serviceAccountConfigured:Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+    apiKeyConfigured:Boolean(API_KEY),
+    writeEnabled:WRITE_ENABLED,
+    logEnabled:LOG_ENABLED
+  });
+  try {
+    const s = sheetsClient();
+    const meta = await s.spreadsheets.get({
+      spreadsheetId:SPREADSHEET_ID,
+      fields:'spreadsheetId,properties.title'
+    });
+    console.log('Google Sheets connection OK:', meta.data.properties?.title || SPREADSHEET_ID);
+  } catch (e) {
+    console.error('Google Sheets connection FAILED:', e.message);
+  }
+});
